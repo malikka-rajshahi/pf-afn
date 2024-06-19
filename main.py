@@ -9,6 +9,7 @@ from collections import OrderedDict
 import cv2
 import numpy as np
 import torch
+import torch.nn as nn
 from PIL import Image
 from options.test_options import TestOptions
 from data.data_loader_test import CreateDataLoader
@@ -27,7 +28,7 @@ class Tryon:
         # self.gen_model = torch.load('checkpoints/PFAFN/gen_model_final.pth', map_location)
         # self.warp_model = torch.load('checkpoints/PFAFN/warp_model_final.pth', map_location)
 
-        self.gen_model = ResUnetGenerator(3, 4, 7)
+        self.gen_model = ResUnetGenerator(7, 4, 5, ngf=64, norm_layer=nn.BatchNorm2d)
         load_checkpoint(self.gen_model, 'checkpoints/PFAFN/gen_model_final.pth')
 
         self.warp_model = AFWM(3)
@@ -48,24 +49,24 @@ class Tryon:
         #img = Image.open(buf)
 
         try:
-            os.mkdir('/tmp/test_clothes')
-            os.mkdir('/tmp/test_img')
-            os.mkdir('/tmp/test_edge')
+            os.mkdir('dataset/test_clothes')
+            os.mkdir('dataset/test_img')
+            os.mkdir('dataset/test_edge')
         except:
             pass
 
 
-        image.save('/tmp/test_img/clothes_1.jpg')
-        clothImage.save('/tmp/test_clothes/clothes_test_1.jpg')
-        edgeImage.save('/tmp/test_edge/clothes_test_1.jpg')
-        print(os.listdir('/tmp'))
-        print(os.listdir('/tmp/test_img'))
+        image.save('dataset/test_img/clothes_1.jpg')
+        clothImage.save('dataset/test_clothes/clothes_test_1.jpg')
+        edgeImage.save('dataset/test_edge/clothes_test_1.jpg')
+        print(os.listdir('dataset'))
+        print(os.listdir('dataset/test_img'))
         #cloth_blob = payload['cloth_image'][0]
         #edge_blob = payload['edge_image'][0]
         # self.firebase.getImageromGSUrl(blobPath=cloth_blob)
         # self.firebase.getImageromGSUrl(blobPath=edge_blob,imgType=1)
-        print(os.listdir('/tmp/test_clothes'))
-        print(os.listdir('/tmp/test_edge'))
+        print(os.listdir('dataset/test_clothes'))
+        print(os.listdir('dataset/test_edge'))
         opt = TestOptions().parse()
         start_epoch, epoch_iter = 1, 0
         data_loader = CreateDataLoader(opt)
@@ -78,18 +79,18 @@ class Tryon:
             epoch_iter += opt.batchSize
 
             real_image = data['image']
-            print(real_image)
+            # print(real_image)
             clothes = data['clothes']
-            print(clothes)
+            # print(clothes)
             edge = data['edge']
-            print(edge)
+            # print(edge)
 
             p_tryon = self.model(real_image, clothes, edge)
             cv_img = p_tryon
             rgb = (cv_img*255).astype(np.uint8)
             bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-            cv2.imwrite('/tmp/out.jpg', bgr)
-            with open(r'/tmp/out.jpg', 'rb') as f:
+            cv2.imwrite('dataset/out.jpg', bgr)
+            with open(r'dataset/out.jpg', 'rb') as f:
                 im_b64 = base64.b64encode(f.read())
 
             return im_b64

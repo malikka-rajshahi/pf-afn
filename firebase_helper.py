@@ -33,13 +33,13 @@ class FirebaseHelper:
             #os.mkdir('tmp/test_clothes')
             
 
-            storageLoc = "/tmp/test_clothes/clothes_test_1.jpg"
+            storageLoc = "dataset/test_clothes/clothes_test_1.jpg"
         else:
             #try:
             #	os.mkdir('tmp/test_edge')
             #except:
             #	pass
-            storageLoc = "/tmp/test_edge/clothes_test_1.jpg"
+            storageLoc = "dataset/test_edge/clothes_test_1.jpg"
         
         self.blob = self.strg.blob(blobPath)
         genUrl = self.blob.generate_signed_url(datetime.timedelta(seconds=300), method='GET')

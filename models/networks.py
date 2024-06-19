@@ -179,12 +179,12 @@ def load_checkpoint(model, checkpoint_path):
     checkpoint = torch.load(checkpoint_path, map_location)
     print('checkpoint loaded')
     checkpoint_new = model.state_dict()
-    print(checkpoint_new)
+    # print(checkpoint_new)
     count=0
     for param in checkpoint_new:
         checkpoint_new[param] = checkpoint[param]
         count+=1
-        print(count,end='/r')
+        # print(count,end='/r')
     print('DOne Here')
     model.load_state_dict(checkpoint_new)
     print('function done')
