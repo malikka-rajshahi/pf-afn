@@ -3,6 +3,7 @@ from os import stat
 # from flask import Flask,request,send_file
 from models.helper import Helper_Model
 from models.networks import load_checkpoint
+from models.networks import ResUnetGenerator
 from models.afwm import AFWM
 from collections import OrderedDict
 import cv2
@@ -23,8 +24,11 @@ class Tryon:
         # self.gen_model = torch.load('pt_models/generator_new.pt')
         # self.warp_model = torch.load('pt_models/warp_pure_corr_model.pt')
         
-        self.gen_model = torch.load('checkpoints/PFAFN/gen_model_final.pth', map_location)
+        # self.gen_model = torch.load('checkpoints/PFAFN/gen_model_final.pth', map_location)
         # self.warp_model = torch.load('checkpoints/PFAFN/warp_model_final.pth', map_location)
+
+        self.gen_model = ResUnetGenerator(3, 4, 7)
+        load_checkpoint(self.gen_model, 'checkpoints/PFAFN/gen_model_final.pth')
 
         self.warp_model = AFWM(3)
         load_checkpoint(self.warp_model, 'checkpoints/PFAFN/warp_model_final.pth')
