@@ -5,7 +5,7 @@ from models.helper import Helper_Model
 from models.networks import load_checkpoint
 from models.networks import ResUnetGenerator
 from models.afwm import AFWM
-from collections import OrderedDict
+from data.cloth_edge import GenerateEdge
 import cv2
 import numpy as np
 import torch
@@ -21,21 +21,16 @@ import json
 
 class Tryon:
     def __init__(self):
-        map_location=torch.device('cpu')
         # self.gen_model = torch.load('pt_models/generator_new.pt')
         # self.warp_model = torch.load('pt_models/warp_pure_corr_model.pt')
         
-        # self.gen_model = torch.load('checkpoints/PFAFN/gen_model_final.pth', map_location)
-        # self.warp_model = torch.load('checkpoints/PFAFN/warp_model_final.pth', map_location)
-
         self.gen_model = ResUnetGenerator(7, 4, 5, ngf=64, norm_layer=nn.BatchNorm2d)
         load_checkpoint(self.gen_model, 'checkpoints/PFAFN/gen_model_final.pth')
 
         self.warp_model = AFWM(3)
         load_checkpoint(self.warp_model, 'checkpoints/PFAFN/warp_model_final.pth')
-        # self.warp_model = afwm_model.load_state_dict(torch.load('checkpoints/PFAFN/warp_model_final.pth', map_location))
 
-        self.model = Helper_Model(self.gen_model,self.warp_model)
+        self.model = Helper_Model(self.gen_model, self.warp_model)
         self.model.eval()
         # self.firebase = FirebaseHelper()
 
@@ -56,23 +51,24 @@ class Tryon:
             pass
 
 
-        image.save('dataset/test_img/clothes_1.jpg')
-        clothImage.save('dataset/test_clothes/clothes_test_1.jpg')
-        edgeImage.save('dataset/test_edge/clothes_test_1.jpg')
-        print(os.listdir('dataset'))
-        print(os.listdir('dataset/test_img'))
+        image.save('/tmp/test_img/clothes_1.jpg')
+        clothImage.save('/tmp/test_clothes/clothes_test_1.jpg')
+        edgeImage.save('/tmp/test_edge/clothes_test_1.jpg')
+        print(os.listdir('/tmp'))
+        print(os.listdir('/tmp/test_img'))
+
         #cloth_blob = payload['cloth_image'][0]
         #edge_blob = payload['edge_image'][0]
         # self.firebase.getImageromGSUrl(blobPath=cloth_blob)
         # self.firebase.getImageromGSUrl(blobPath=edge_blob,imgType=1)
-        print(os.listdir('dataset/test_clothes'))
-        print(os.listdir('dataset/test_edge'))
+        print(os.listdir('/tmp/test_clothes'))
+        print(os.listdir('/tmp/test_edge'))
         opt = TestOptions().parse()
         start_epoch, epoch_iter = 1, 0
         data_loader = CreateDataLoader(opt)
         dataset = data_loader.load_data()
         dataset_size = len(data_loader)
-        total_steps = (start_epoch-1) * dataset_size + epoch_iter
+        total_steps = (start_epoch-1) * dataset_size + epoch_iter   
 
         for i, data in enumerate(dataset, start=epoch_iter):
             total_steps += opt.batchSize
@@ -115,7 +111,7 @@ def get_img_path(img_name):
 
 def main():
     application = Tryon()
-    inp_path = get_img_path('5')
+    inp_path = get_img_path('in_2')
 
     # set input image
     try:
@@ -125,20 +121,30 @@ def main():
         print("Error in opening input image")
 
     # set cloth image
-    cloth_path = 'dataset/test_clothes/clothes_test_1.jpg'
+    cloth_path = 'dataset/test_clothes/00067_00.jpg'
     try:
         cloth_img = Image.open(cloth_path)
         print(f"Cloth image opened: {cloth_path}")
     except IOError:
         print("Error in opening cloth image")
 
-    # set cloth edge image 
-    edge_path = 'dataset/test_edge/clothes_test_1.jpg'
+    # produce cloth edge image
+    edge_path = 'dataset/test_edge/cloth_edge.jpg'
+    edge_gen = GenerateEdge(cloth_path)
+    edge_gen.process_images(edge_path)
     try:
         edge_img = Image.open(edge_path)
         print(f"Edge image opened: {edge_path}")
     except IOError:
         print("Error in opening edge image")
+
+    # set cloth edge image 
+    # edge_path = 'dataset/test_edge/clothes_test_1.jpg'
+    # try:
+    #     edge_img = Image.open(edge_path)
+    #     print(f"Edge image opened: {edge_path}")
+    # except IOError:
+    #     print("Error in opening edge image")
 
     # run model
     application.send_here(input_img, cloth_img, edge_img)
