@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+    <html>
+    <head>
+        <title>Virtual Dressing Room</title>
+        <style>
+            body {
+                background-color: black;
+                color: white;
+                font-family: Arial, sans-serif;
+                margin: 0;
+                padding-top: 20px;
+                min-height: 100vh;
+                overflow-y: auto;
+            }
+            .image-padding {
+                padding: 20px;
+            }
+            .flash-messages {
+                color: orangered;
+                margin: 20px;
+                font-size: 16px;
+            }
+            .container {
+                text-align: center;
+            }
+            .upload-box {
+                display: inline-flex;
+                align-items: center;
+                padding: 20px;
+                background-color: #1e1e1e;
+                border-radius: 10px;
+                border: 2px dashed #4f4f4f;
+                transition: background-color 0.3s, border-color 0.3s;
+            }
+            .upload-box:hover {
+                background-color: #292929; 
+                border-color: #777; 
+            }
+            .upload-instructions {
+                margin-left: 20px;
+                font-size: 14px;
+            }
+            .upload-btn-wrapper {
+                position: relative;
+                overflow: hidden;
+            }
+            .btn {
+                position: relative;
+                border: 2px solid gray;
+                color: white;
+                background-color: #333;
+                padding: 8px 20px;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: background-color 0.3s, color 0.3s;
+            }
+            input[type=file] {
+                font-size: 100px;
+                position: absolute;
+                left: 0;
+                top: 0;
+                opacity: 0;
+            }
+            #control-buttons {
+                padding-bottom: 20px;
+                display: none;
+            }
+            #slider-wrapper {
+                align-items: center;
+                overflow: hidden;
+                width: 75%; 
+                margin: 20px auto;
+            }
+            #image-slider {
+                align-items: center;
+                display: flex;
+                transition: transform 0.5s ease;
+            }
+            .slide {
+                max-width: calc(100% / 5 - 10px);
+                height: auto;
+                overflow: hidden;
+            }
+            .slide img {
+                max-width: 95%;
+                height: auto;
+            }
+            .sel-btn {
+                position: relative;
+                border: 2px solid gray;
+                color: rgb(0, 0, 0);
+                background-color: #ffffff;
+                padding: 8px 20px;
+                border-radius: 8px;
+                font-size: 14px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: background-color 0.3s, color 0.3s;
+            }
+            .sel-btn:hover {
+                background-color: #292929; 
+                border-color: #777; 
+            }
+            .sel-btn.selected {
+                background-color: #292929; 
+                border-color: #777; 
+                color: white; 
+            }
+            .generate {
+                position: relative;
+                text-align: center;
+                border: 2px solid gray;
+                color: white;
+                background-color: #333;
+                padding: 8px 20px;
+                border-radius: 8px;
+                font-size: 16px;
+                font-weight: bold;
+                cursor: pointer;
+                transition: background-color 0.3s, color 0.3s;
+            }
+            .generate:hover {
+                background-color: white;
+                color: black; 
+                border-color: #777; 
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1>Virtual Dressing Room</h1>
+            <h2>Upload your picture here:</h2>
+            <div class="flash-messages">
+                {% with messages = get_flashed_messages() %}
+                    {% if messages %}
+                        <ul>
+                        {% for message in messages %}
+                            <li>{{ message }}</li>
+                        {% endfor %}
+                        </ul>
+                    {% endif %}
+                {% endwith %}
+            </div>
+            <form action="/" method="post" enctype="multipart/form-data">
+                <div class="upload-box">
+                    <div class="upload-btn-wrapper">
+                        <button class="btn">Browse files</button>
+                        <input type="file" name="file" />
+                    </div>
+                    <div class="upload-instructions">
+                        <p>Limit 200MB per file - JPG, PNG, JPEG</p>
+                    </div>
+                </div>
+            {% if image %}
+                <div>
+                    <img class="image-padding" src="{{ url_for('get_dataroot_image', filename='test_img/' + image) }}" alt="Uploaded Image" style="max-width:30%;">
+                </div>
+                {% if clothing_images %}
+                    
+                    <div id="slider-wrapper">
+                        <div id="image-slider">
+                            {% for cloth_image in clothing_images %}
+                                <p>{{ cloth_image.url }}</p>
+                                <div class="slide">
+                                    <img src="{{ url_for('get_dataroot_image', filename='test_clothes/' + cloth_image) }}" alt="{{ cloth_image.alt }}">
+                                    <button class="sel-btn" data-cloth={{cloth_image}}>Select</button>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div id="control-buttons">
+                        <button id="prev">Previous</button>
+                        <button id="next">Next</button>
+                    </div>
+
+                {% endif %}
+                <input type="hidden" name="selected_cloth" id="selected_cloth">
+                <button name="generate">Generate</button>
+                {% if output %}
+                    <div>
+                        <img class="image-padding" src="{{ url_for('get_output_image', filename=output) }}" alt="Output Image" style="max-width:30%;">
+                    </div>
+                {% endif %}
+            {% endif %}
+            </form>
+        </div>
+    </body>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.querySelector('input[type="file"]');
+            fileInput.onchange = function() {
+                if (this.files.length > 0) {
+                    document.querySelector('.btn').textContent = 'Uploading...';
+                    document.querySelector('.btn').disabled = true;
+                    this.form.submit();
+                }
+            };
+        
+            const slider = document.getElementById('image-slider');
+            const controlButtons = document.getElementById('control-buttons');
+            if (slider && controlButtons) {
+                let currentIndex = 0;
+        
+                function updateSliderPosition() {
+                    const moveX = currentIndex * 500; // 500px is the visible width of the slider
+                    slider.style.transform = `translateX(-${moveX}px)`;
+                }
+        
+                document.getElementById('next').addEventListener('click', function() {
+                    event.preventDefault(); 
+                    const totalSlides = Math.ceil({{ clothing_images|length }} / 5);
+                    if (currentIndex < totalSlides - 1) {
+                        currentIndex++;
+                        updateSliderPosition();
+                    }
+                });
+        
+                document.getElementById('prev').addEventListener('click', function() {
+                    event.preventDefault(); 
+                    if (currentIndex > 0) {
+                        currentIndex--;
+                        updateSliderPosition();
+                    }
+                });
+        
+                if ({{ clothing_images|length }} > 5) {
+                    controlButtons.style.display = 'block';
+                }
+            }
+            
+            const selButtons = document.querySelectorAll('.sel-btn');
+
+            selButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    event.preventDefault();
+
+                    const alreadySelected = this.classList.contains('selected');
+                    selButtons.forEach(btn => btn.classList.remove('selected'));
+                    if (!alreadySelected) {
+                        this.classList.add('selected');
+                        document.getElementById('selected_cloth').value = this.getAttribute('data-cloth');
+                    }
+
+                    document.getElementById('selected_cloth').value = this.getAttribute('data-cloth');
+                });
+            });
+
+            const form = document.querySelector('form');
+            const genButton = document.querySelector('.generate');
+            if (genButton) {
+                genButton.addEventListener('click', function(event) {
+                    event.preventDefault(); 
+                    this.form.submit(); 
+                });
+            }
+        });
+        </script>        
+    </html>
