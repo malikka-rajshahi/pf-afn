@@ -6,6 +6,8 @@ from models.networks import load_checkpoint
 from models.networks import ResUnetGenerator
 from models.afwm import AFWM
 from data.cloth_edge import GenerateEdge
+from data.aligned_dataset_test import AlignedDataset
+from data.base_dataset import BaseDataset, get_params, get_transform
 import cv2
 import numpy as np
 import torch
@@ -21,9 +23,6 @@ import json
 
 class Tryon:
     def __init__(self):
-        # self.gen_model = torch.load('pt_models/generator_new.pt')
-        # self.warp_model = torch.load('pt_models/warp_pure_corr_model.pt')
-        
         self.gen_model = ResUnetGenerator(7, 4, 5, ngf=64, norm_layer=nn.BatchNorm2d)
         load_checkpoint(self.gen_model, 'checkpoints/PFAFN/gen_model_final.pth')
 
@@ -32,64 +31,50 @@ class Tryon:
 
         self.model = Helper_Model(self.gen_model, self.warp_model)
         self.model.eval()
-        # self.firebase = FirebaseHelper()
 
     def send_here(self,image,clothImage,edgeImage,cloth_blob=None,edge_blob=None):
-
-        #payload = request.form.to_dict(flat=False)
-        #im_b64 = request['real_image']
-        #im_binary = base64.b64decode(im_b64)
-        #im_binary=im_binary.decode("utf-8")
-        #buf = io.BytesIO(im_binary)
-        #img = Image.open(buf)
-
-        try:
-            os.mkdir('dataset/test_clothes')
-            os.mkdir('dataset/test_img')
-            os.mkdir('dataset/test_edge')
-        except:
-            pass
-
-
-        image.save('/tmp/test_img/clothes_1.jpg')
-        clothImage.save('/tmp/test_clothes/clothes_test_1.jpg')
-        edgeImage.save('/tmp/test_edge/clothes_test_1.jpg')
-        print(os.listdir('/tmp'))
-        print(os.listdir('/tmp/test_img'))
-
-        #cloth_blob = payload['cloth_image'][0]
-        #edge_blob = payload['edge_image'][0]
-        # self.firebase.getImageromGSUrl(blobPath=cloth_blob)
-        # self.firebase.getImageromGSUrl(blobPath=edge_blob,imgType=1)
-        print(os.listdir('/tmp/test_clothes'))
-        print(os.listdir('/tmp/test_edge'))
         opt = TestOptions().parse()
-        start_epoch, epoch_iter = 1, 0
-        data_loader = CreateDataLoader(opt)
-        dataset = data_loader.load_data()
-        dataset_size = len(data_loader)
-        total_steps = (start_epoch-1) * dataset_size + epoch_iter   
 
-        for i, data in enumerate(dataset, start=epoch_iter):
-            total_steps += opt.batchSize
-            epoch_iter += opt.batchSize
+        I = image.convert('RGB')
+        params = get_params(opt, I.size)
+        transform = get_transform(opt, params)
+        transform_E = get_transform(opt, params, method=Image.NEAREST, normalize=False)
 
-            real_image = data['image']
-            # print(real_image)
-            clothes = data['clothes']
-            # print(clothes)
-            edge = data['edge']
-            # print(edge)
+        print('transforming I')
+        I_tensor = transform(I)
+        I_tensor = I_tensor.unsqueeze(0)
+        print(f"I Shape: {I_tensor.shape}")
 
-            p_tryon = self.model(real_image, clothes, edge)
-            cv_img = p_tryon
-            rgb = (cv_img*255).astype(np.uint8)
-            bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
-            cv2.imwrite('dataset/out.jpg', bgr)
-            with open(r'dataset/out.jpg', 'rb') as f:
-                im_b64 = base64.b64encode(f.read())
+        C = clothImage.convert('RGB')
+        print('transforming C')
+        C_tensor = transform(C)
+        C_tensor = C_tensor.unsqueeze(0)
+        print(f"C Shape: {C_tensor.shape}")
 
-            return im_b64
+        E = edgeImage.convert('L')
+        print('transforming E')
+        E_tensor = transform_E(E)
+        E_tensor = E_tensor.unsqueeze(0)
+        print(f"E Shape: {E_tensor.shape}")
+        print('all transforms done')
+
+        data = { 'image': I_tensor,'clothes': C_tensor, 'edge': E_tensor} 
+        print('defined data')
+
+        real_image = data['image']
+        clothes = data['clothes']
+        edge = data['edge']
+
+        p_tryon = self.model(real_image, clothes, edge)
+    
+        cv_img = p_tryon
+        rgb = (cv_img*255).astype(np.uint8)
+        bgr = cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR)
+        cv2.imwrite('dataset/out.jpg', bgr)
+        with open(r'dataset/out.jpg', 'rb') as f:
+            im_b64 = base64.b64encode(f.read())
+
+        return im_b64
 
 
     def base(self):
