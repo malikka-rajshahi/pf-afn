@@ -9,8 +9,9 @@ app = Flask(__name__)
 
 DATAROOT = "dataset"
 CLOTHING_PATH = os.path.join(DATAROOT, "test_clothes")
+CLOTHING_INP_PATH = os.path.join(DATAROOT, "input_cloth")
 IMG_PATH = os.path.join(DATAROOT, "test_img")
-EDGE_PATH = "dataset/test_edge/cloth_edge.jpg"
+EDGE_PATH = "dataset/test_edge/input_cloth.jpg"
 # PAIRS_PATH = "SD-VITON/dataroot/test_pairs.txt"
 OUTPUT_PATH = DATAROOT
 
@@ -78,12 +79,14 @@ def main():
                     tryon = Tryon()
                     inp_image = Image.open(f'{IMG_PATH}/input_image.jpg')
                     cloth_image = Image.open(f'{CLOTHING_PATH}/{selected_cloth}')
-                    edge_gen = GenerateEdge(f'{CLOTHING_PATH}/{selected_cloth}')
+                    cloth_image.save(f'{CLOTHING_INP_PATH}/input_cloth.jpg')
+                    edge_gen = GenerateEdge(f'{CLOTHING_INP_PATH}/input_cloth.jpg')
                     edge_gen.process_images(EDGE_PATH)
                     edge_image = Image.open(EDGE_PATH)
                     edge_image.save(EDGE_PATH)
                     tryon.send_here(inp_image, cloth_image, edge_image)
                     output = "out.jpg"
+                    os.remove('/dataset/test_clothes/input_cloth.jpg')
 
                     # sizing output image
                     out_img = Image.open('dataset/out.jpg')
@@ -102,4 +105,4 @@ def main():
     clothing_images = os.listdir(CLOTHING_PATH)
     return render_template("flask_display.html", clothing_images=clothing_images, image=image_name, output=output)
 
-if __name__ == "__main__": app.run(host='0.0.0', port='8080')
+if __name__ == "__main__": app.run(host='0.0.0.0', port='5000')
